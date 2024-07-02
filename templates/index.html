@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CustomBot</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #e8f0fe;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    .chatbot-container {
+        position: relative;
+        background-color: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 360px;
+        overflow: hidden;
+    }
+    .chatbot-header {
+        background-color: #6c63ff;
+        color: #ffffff;
+        text-align: center;
+        padding: 10px;
+        font-size: 1.2em;
+        border-bottom: 1px solid #ccc;
+        position: relative;
+    }
+    .file-name {
+        text-align: center;
+        padding: 5px;
+        font-size: 0.9em;
+        color: #6c63ff;
+        border-bottom: 1px solid #ccc;
+    }
+    .file-name .delete-btn {
+        margin-left: 10px;
+        cursor: pointer;
+        color: #dc3545;
+    }
+    .chatbot-content {
+        padding: 15px;
+        height: 360px;
+        overflow-y: auto;
+    }
+    .message {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .message.bot {
+        justify-content: flex-start;
+    }
+    .message.user {
+        justify-content: flex-end;
+    }
+    .message .text {
+        background-color: #f1f0ff;
+        padding: 10px;
+        border-radius: 10px;
+        max-width: 70%;
+    }
+    .message.user .text {
+        background-color: #6c63ff;
+        color: #ffffff;
+    }
+    .file-upload {
+        text-align: center;
+    }
+    .file-upload input[type="file"] {
+        display: none;
+    }
+    .file-upload label {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #6c63ff;
+        color: #ffffff;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .file-upload label:hover {
+        background-color: #5148d1;
+    }
+    .chatbot-input {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        border-top: 1px solid #ccc;
+        position: relative;
+    }
+    .chatbot-input input {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 20px;
+        background-color: #f1f0ff;
+        margin-right: 10px;
+    }
+    .chatbot-input button {
+        background-color: #6c63ff;
+        border: none;
+        color: #ffffff;
+        padding: 10px;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+    .file-upload-button {
+        background-color: #6c63ff;
+        border: none;
+        color: #ffffff;
+        padding: 10px;
+        border-radius: 50%;
+        cursor: pointer;
+        margin-right: 10px;
+        position: relative;
+    }
+    .file-upload-button:hover {
+        background-color: #5148d1;
+    }
+    .popup-message {
+        position: absolute;
+        top: -35px;
+        right: 10px;
+        background-color: #6c63ff;
+        color: #ffffff;
+        padding: 5px 10px;
+        border-radius: 4px;
+        display: none;
+        font-size: 0.9em;
+    }
+    .loading-spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #6c63ff;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 2s linear infinite;
+        margin-left: 10px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    footer {
+        margin-top: auto;
+        background-color: #ffffff;
+        text-align: center;
+        padding: 3px;
+        box-shadow: 0 -1px 5px rgba(0,0,0,0.1);
+        font-size: 10px; 
+    }
+</style>
+</head>
+<body>
+<div class="chatbot-container">
+    <div class="chatbot-header">
+        CustomBot
+    </div>
+    <div id="fileName" class="file-name"></div>
+    <div class="chatbot-content" id="chatbotContent">
+        <div class="message bot">
+            <div class="text">Hi there 👋</div>
+        </div>
+        <div class="message bot">
+            <div class="text">Please upload your file to start chatting with its content.</div>
+        </div>
+    </div>
+    <div class="chatbot-input">
+        <input type="file" id="fileInput" aria-label="File Upload" style="display: none;" accept=".pdf,.doc,.docx"/>
+        <div class="file-upload-button-wrapper">
+            <button id="fileButton" class="file-upload-button">📁</button>
+            <div id="popupMessage" class="popup-message"></div>
+        </div>
+        <input type="text" id="userInput" placeholder="Write a message..." disabled />
+        <button id="sendButton" disabled>➤</button>
+    </div>
+    <footer>
+        Copyright © 1996-2024 smartData Enterprises
+    </footer>
+</div>
+<script>
+    let fileContent = '';
+    let fileUploaded = false;
+
+    document.getElementById('fileButton').addEventListener('click', function() {
+        document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const allowedExtensions = ['pdf', 'doc', 'docx'];
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedExtensions.includes(fileExtension)) {
+                showPopupMessage('Invalid file type. Only PDF, DOC, DOCX allowed.', '#dc3545');
+                return;
+            }
+
+            if (fileUploaded) {
+                showPopupMessage('Please delete the current file before uploading a new one.', '#dc3545');
+                return;
+            }
+
+            document.getElementById('fileName').innerHTML = file.name + ' <span class="delete-btn" onclick="deleteFile()">✖</span>';
+            addLoader();
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                removeLoader();
+                showPopupMessage('File uploaded successfully.', '#28a745');
+                fileContent = data.content;  // Assume the server returns the file content in 'data.content'
+                document.getElementById('userInput').disabled = false;
+                document.getElementById('sendButton').disabled = false;
+                fileUploaded = true;
+                document.querySelectorAll('.message.bot').forEach(message => message.style.display = 'none');
+    
+                addMessage('bot', 'You can now ask your queries!');
+            })
+            .catch((error) => {
+                removeLoader();
+                showPopupMessage('File upload failed.', '#dc3545');
+            });
+        }
+    });
+
+    document.getElementById('sendButton').addEventListener('click', sendMessage);
+    document.getElementById('userInput').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    function sendMessage() {
+        const userInput = document.getElementById('userInput').value;
+        if (userInput.trim() === '') return;
+
+        addMessage('user', userInput);
+        document.getElementById('userInput').value = '';
+
+        // Show loading spinner while waiting for response
+        addLoader();
+
+        // Send user input to chat API
+        fetch('/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                query: userInput,
+                content: fileContent
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            removeLoader();
+            addMessage('bot', data.response);
+        })
+        .catch((error) => {
+            removeLoader();
+            addMessage('bot', 'Error processing your message.');
+        });
+    }
+
+    function addMessage(sender, text) {
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message ' + (sender === 'user' ? 'user' : 'bot');
+
+        const messageText = document.createElement('div');
+        messageText.className = 'text';
+        messageText.textContent = text;
+        messageContainer.appendChild(messageText);
+
+        document.getElementById('chatbotContent').appendChild(messageContainer);
+        document.getElementById('chatbotContent').scrollTop = document.getElementById('chatbotContent').scrollHeight;
+    }
+
+    function addLoader() {
+        const loaderContainer = document.createElement('div');
+        loaderContainer.className = 'message bot loader';
+
+        const loader = document.createElement('div');
+        loader.className = 'loading-spinner';
+        loaderContainer.appendChild(loader);
+
+        document.getElementById('chatbotContent').appendChild(loaderContainer);
+        document.getElementById('chatbotContent').scrollTop = document.getElementById('chatbotContent').scrollHeight;
+    }
+
+    function removeLoader() {
+        const loader = document.querySelector('.message.loader');
+        if (loader) {
+            document.getElementById('chatbotContent').removeChild(loader);
+        }
+    }
+
+    function showPopupMessage(message, color) {
+        const popupMessage = document.getElementById('popupMessage');
+        popupMessage.textContent = message;
+        popupMessage.style.backgroundColor = color;
+        popupMessage.style.display = 'block';
+
+        setTimeout(function() {
+            popupMessage.style.display = 'none';
+        }, 3000);
+    }
+
+    function deleteFile() {
+        fileUploaded = false;
+        fileContent = '';
+        document.getElementById('fileName').textContent = '';
+        document.getElementById('userInput').disabled = true;
+        document.getElementById('sendButton').disabled = true;
+        document.querySelectorAll('.message').forEach(message => message.style.display = 'none');
+
+        addMessage('bot', 'Please upload your file to start chatting with its content.');
+    }
+</script>
+</body>
+</html>
